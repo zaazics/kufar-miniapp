@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>📱 Kufar Парсер</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div id="app">
+        <!-- Шапка -->
+        <header>
+            <div class="header-left">
+                <h1>📱 Kufar Парсер</h1>
+                <span class="badge" id="adsCount">0</span>
+            </div>
+            <button class="btn-refresh" id="refreshBtn">🔄</button>
+        </header>
+
+        <!-- Категории -->
+        <div class="category-tabs" id="categoryTabs"></div>
+
+        <!-- Поиск + фильтры -->
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="🔍 Найти объявление..." />
+            <button id="searchBtn">Найти</button>
+        </div>
+
+        <div class="filters">
+            <select id="filterPrice">
+                <option value="all">💰 Все цены</option>
+                <option value="0-100">До 100 BYN</option>
+                <option value="100-300">100–300 BYN</option>
+                <option value="300-500">300–500 BYN</option>
+                <option value="500-1000">500–1000 BYN</option>
+                <option value="1000+">От 1000 BYN</option>
+            </select>
+            <select id="filterCity">
+                <option value="all">📍 Все города</option>
+                <option value="minsk">Минск</option>
+                <option value="gomel">Гомель</option>
+                <option value="mogilev">Могилёв</option>
+                <option value="vitebsk">Витебск</option>
+                <option value="grodno">Гродно</option>
+                <option value="brest">Брест</option>
+            </select>
+            <button id="filterBtn">Применить</button>
+        </div>
+
+        <!-- Статистика -->
+        <div class="stats" id="stats"></div>
+
+        <!-- Список объявлений -->
+        <div id="adsList"><div class="loading">⏳ Загрузка...</div></div>
+
+        <!-- Пагинация -->
+        <div class="pagination" id="pagination">
+            <button id="prevPage">⬅️</button>
+            <span id="pageInfo">1 / 1</span>
+            <button id="nextPage">➡️</button>
+        </div>
+
+        <!-- Закрыть -->
+        <button class="btn-telegram" id="closeBtn">✖️ Закрыть</button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
