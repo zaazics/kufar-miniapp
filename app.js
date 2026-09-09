@@ -10,14 +10,8 @@ const state = {
     searchQuery: "",
     filterPrice: "all",
     filterCity: "all",
-    categories: [
-        { key: "phones", label: "📱 Телефоны" },
-        { key: "consoles", label: "🎮 Приставки" },
-        { key: "gpu", label: "🖥 Видеокарты" },
-        { key: "cpu", label: "⚡ Процессоры" },
-        { key: "laptops", label: "💻 Ноутбуки" },
-        { key: "monitors", label: "🖥 Мониторы" },
-    ],
+    categories: [],
+    user_id: tg.initDataUnsafe?.user?.id || null
 };
 
 // ===== ЭЛЕМЕНТЫ =====
@@ -31,16 +25,26 @@ const categoryTabs = $("categoryTabs");
 // ===== API =====
 async function api(method, params = {}) {
     const url = new URL("/api", window.location.origin);
-    const body = method === "GET" ? undefined : JSON.stringify(params);
     if (method === "GET") {
         Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
     }
     const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body,
+        body: method === "POST" ? JSON.stringify(params) : undefined,
     });
     return res.json();
+}
+
+// ===== ЗАГРУЗКА КАТЕГОРИЙ =====
+async function loadCategories() {
+    try {
+        const data = await api("GET", { action: "get_categories" });
+        state.categories = data.categories || [];
+        renderCategories();
+    } catch (err) {
+        console.error("Ошибка загрузки категорий:", err);
+    }
 }
 
 // ===== ЗАГРУЗКА ОБЪЯВЛЕНИЙ =====
@@ -55,6 +59,7 @@ async function loadAds() {
             search: state.searchQuery,
             price: state.filterPrice,
             city: state.filterCity,
+            user_id: state.user_id,
         });
 
         if (data.error) {
@@ -73,7 +78,7 @@ function renderCategories() {
     categoryTabs.innerHTML = "";
     state.categories.forEach((cat) => {
         const btn = document.createElement("button");
-        btn.textContent = cat.label;
+        btn.textContent = cat.name;
         btn.className = cat.key === state.category ? "active" : "";
         btn.onclick = () => {
             state.category = cat.key;
@@ -103,8 +108,8 @@ function renderAds(data) {
     }
 
     adsList.innerHTML = state.ads
-        .map((ad, i) => {
-            const isBest = ad.is_best || (i === 0 && ad.savings > 0);
+        .map((ad) => {
+            const isBest = ad.is_best || (ad.savings && ad.savings > 0);
             return `
                 <div class="ad-card ${isBest ? "best" : ""}">
                     ${isBest ? '<div class="best-label">🏆 САМОЕ ВЫГОДНОЕ!</div>' : ""}
@@ -113,11 +118,15 @@ function renderAds(data) {
                     <div class="meta">
                         <span>📍 ${ad.city || "Город не указан"}</span>
                         <span>🕐 ${ad.time || "Не указано"}</span>
-                        ${ad.savings ? `<span class="savings">💰 Экономия: ${ad.savings} BYN</span>` : ""}
+                        ${ad.savings ? `<span class="savings">💰 Экономия: ${ad.savings} BYN (${ad.savings_percent}%)</span>` : ""}
+                        ${ad.avg_price ? `<span>📊 Рынок: ${ad.avg_price} BYN</span>` : ""}
                     </div>
                     <div class="actions">
                         <button class="btn-primary" onclick="openLink('${ad.url}')">🔗 Открыть</button>
-                        <button class="btn-secondary" onclick="saveAd('${ad.url}')">⭐ Сохранить</button>
+                        ${ad.is_favorite 
+                            ? `<button class="btn-saved" onclick="removeFavorite('${ad.url}')">⭐ В избранном</button>`
+                            : `<button class="btn-secondary" onclick="saveAd('${ad.url}', '${ad.title}', '${ad.price}', '${ad.city}')">⭐ Сохранить</button>`
+                        }
                     </div>
                 </div>
             `;
@@ -131,13 +140,34 @@ window.openLink = (url) => {
     else tg.showAlert("❌ Ссылка недоступна");
 };
 
-window.saveAd = async (url) => {
+window.saveAd = async (url, title, price, city) => {
     try {
-        const data = await api("POST", { action: "save_ad", url });
+        const data = await api("POST", {
+            action: "save_ad",
+            user_id: state.user_id,
+            url: url,
+            title: title,
+            price: price,
+            city: city,
+        });
         tg.showAlert(data.message || "✅ Сохранено!");
         loadAds();
     } catch {
         tg.showAlert("❌ Ошибка сохранения");
+    }
+};
+
+window.removeFavorite = async (url) => {
+    try {
+        const data = await api("POST", {
+            action: "remove_favorite",
+            user_id: state.user_id,
+            url: url,
+        });
+        tg.showAlert(data.message || "🗑 Удалено!");
+        loadAds();
+    } catch {
+        tg.showAlert("❌ Ошибка удаления");
     }
 };
 
@@ -178,6 +208,10 @@ $("refreshBtn").onclick = loadAds;
 $("closeBtn").onclick = () => tg.close();
 
 // ===== ЗАПУСК =====
-renderCategories();
-loadAds();
-tg.ready();
+async function init() {
+    await loadCategories();
+    await loadAds();
+    tg.ready();
+}
+
+init();
